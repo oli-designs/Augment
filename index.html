@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Reflections: An Interactive Typography Workshop</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        body {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        .text-container {
+            position: relative;
+            font-weight: bold;
+            letter-spacing: -0.08em; /* Made kerning 30% tighter */
+            line-height: 1;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .text-layer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            font-family: sans-serif;
+            text-align: center;
+            pointer-events: none;
+            transition: font-variation-settings 0.5s ease-in-out;
+        }
+        .masked {
+            mask: url(#noise-mask);
+            -webkit-mask: url(#noise-mask);
+        }
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 2px; background: #000; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 20px; height: 20px; background: #000; cursor: pointer; border-radius: 0;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px; height: 20px; background: #000; cursor: pointer; border-radius: 0;
+        }
+        .control-panel h2 {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #000;
+            padding-bottom: 0.5rem;
+        }
+        .control-panel p {
+            margin-bottom: 0.25rem;
+            color: #000;
+            font-size: 0.875rem; /* text-sm */
+        }
+        .nav-button {
+            width: 100%;
+            padding: 0.5rem;
+            font-weight: bold;
+            border: 1px solid black;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .file-input-label {
+            display: block; padding: 0.25rem 0.5rem; background-color: white; color: #000;
+            border: 1px solid #000; cursor: pointer; text-align: center; font-weight: 500;
+        }
+        .file-input-label:hover { background-color: #f0f0f0; }
+        .file-input { display: none; }
+        .file-name {
+            font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem; text-align: center;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+        }
+        #gallery-plot-area {
+            position: relative; width: 100%; height: 100%; background-color: #fff; border: 1px solid #d1d5db;
+        }
+        .gallery-point {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: transform 0.2s, z-index 0s 0.1s;
+        }
+        .gallery-point:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            z-index: 100;
+            transition-delay: 0s;
+        }
+        .gallery-point img {
+            max-width: 225px;
+            max-height: 120px;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- Top Panel: Visualization -->
+    <div id="top-panel" class="w-full h-3/5 bg-black">
+        <div id="text-container" class="text-container">
+            <div id="text-layer-1" class="text-layer masked"></div>
+            <div id="text-layer-2" class="text-layer masked"></div>
+            <div id="text-layer-3" class="text-layer masked"></div>
+        </div>
+        <div id="gallery-plot-area" class="hidden">
+             <div class="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs text-gray-500 p-1 bg-white/70">Imaginativeness &rarr;</div>
+             <div class="absolute top-1/2 left-1 -translate-y-1/2 -rotate-90 text-xs text-gray-500 p-1 bg-white/70">Optimism &rarr;</div>
+        </div>
+    </div>
+
+    <!-- Bottom Panel: Controls / Gallery -->
+    <div id="bottom-panel" class="w-full h-2/5 bg-white border-t-2 border-black p-4 flex flex-col">
+        <!-- Workshop Sections -->
+        <div id="workshop-controls" class="control-panel flex-grow">
+            <!-- Section 0: Font Upload -->
+            <div id="section-0">
+                <h2>0. Setup Your Fonts</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                        <label for="font-file-1" class="file-input-label">Criticality Font</label>
+                        <input type="file" id="font-file-1" class="file-input" accept=".ttf,.woff,.woff2">
+                        <div id="file-name-1" class="file-name">No font chosen</div>
+                    </div>
+                    <div>
+                        <label for="font-file-2" class="file-input-label">Creativity Font</label>
+                        <input type="file" id="font-file-2" class="file-input" accept=".ttf,.woff,.woff2">
+                        <div id="file-name-2" class="file-name">No font chosen</div>
+                    </div>
+                    <div>
+                        <label for="font-file-3" class="file-input-label">Learning Font</label>
+                        <input type="file" id="font-file-3" class="file-input" accept=".ttf,.woff,.woff2">
+                        <div id="file-name-3" class="file-name">No font chosen</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 1: Word Input -->
+            <div id="section-1" class="hidden">
+                <h2>1. Who is AI to you?</h2>
+                <input type="text" id="word-input" class="w-full p-2 border border-black text-xl text-center mt-4" placeholder="who is AI to you?" maxlength="15">
+            </div>
+
+            <!-- Section 2: Gains & Losses -->
+            <div id="section-2" class="hidden space-y-2">
+                <h2>2. What is gained and lossed?</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 mt-4">
+                    <div>
+                        <label for="weight-slider-1" class="flex justify-between items-center mb-1 text-sm"><span class="font-bold">Criticality</span><span id="weight-value-1">2.50</span></label>
+                        <input type="range" id="weight-slider-1" min="0" max="5" value="2.5" step="0.01">
+                    </div>
+                    <div>
+                        <label for="weight-slider-2" class="flex justify-between items-center mb-1 text-sm"><span class="font-bold">Creativity</span><span id="weight-value-2">2.50</span></label>
+                        <input type="range" id="weight-slider-2" min="0" max="5" value="2.5" step="0.01">
+                    </div>
+                    <div>
+                        <label for="weight-slider-3" class="flex justify-between items-center mb-1 text-sm"><span class="font-bold">Learning</span><span id="weight-value-3">2.50</span></label>
+                        <input type="range" id="weight-slider-3" min="0" max="5" value="2.5" step="0.01">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Perspectives -->
+            <div id="section-3" class="hidden space-y-2">
+                <h2>3. Where do you position yourself when you think about your releationship with Artificial Intelligence.</h2>
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 mt-4">
+                    <div>
+                        <label for="optimism-slider" class="flex justify-between items-center mb-1 text-sm"><span class="font-bold">Pessimism &harr; Optimism</span><span id="optimism-value">0.00</span></label>
+                        <input type="range" id="optimism-slider" min="0" max="1" value="0" step="0.01">
+                    </div>
+                    <div>
+                        <label for="imaginativeness-slider" class="flex justify-between items-center mb-1 text-sm"><span class="font-bold">Simplicity &harr; Imaginativeness</span><span id="imaginativeness-value">1</span></label>
+                        <input type="range" id="imaginativeness-slider" min="1" max="50" value="1" step="1">
+                    </div>
+                    <div>
+                        <label for="cell-size-slider" class="flex justify-between items-center mb-1 text-sm"><span class="font-bold">Clarity &harr; Abstraction</span><span id="cell-size-value">1</span></label>
+                        <input type="range" id="cell-size-slider" min="1" max="32" value="1" step="1">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Section 4: Color -->
+            <div id="section-4" class="hidden space-y-2">
+                <h2>4. how colourful is our future?</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4">
+                    <div><label for="bg-color-picker" class="block text-sm">Background</label><input type="color" id="bg-color-picker" class="w-full h-8 p-0 border border-black" value="#000000"></div>
+                    <div><label for="fill-color-1" class="block text-sm">Criticality Fill</label><input type="color" id="fill-color-1" class="w-full h-8 p-0 border border-black" value="#000000"></div>
+                    <div><label for="fill-color-2" class="block text-sm">Creativity Fill</label><input type="color" id="fill-color-2" class="w-full h-8 p-0 border border-black" value="#000000"></div>
+                    <div><label for="fill-color-3" class="block text-sm">Learning Fill</label><input type="color" id="fill-color-3" class="w-full h-8 p-0 border border-black" value="#000000"></div>
+                    <div><label for="stroke-color-1" class="block text-sm">Criticality Stroke</label><input type="color" id="stroke-color-1" class="w-full h-8 p-0 border border-black" value="#ffffff"></div>
+                    <div><label for="stroke-color-2" class="block text-sm">Creativity Stroke</label><input type="color" id="stroke-color-2" class="w-full h-8 p-0 border border-black" value="#ffffff"></div>
+                    <div><label for="stroke-color-3" class="block text-sm">Learning Stroke</label><input type="color" id="stroke-color-3" class="w-full h-8 p-0 border border-black" value="#ffffff"></div>
+                </div>
+            </div>
+            
+            <!-- Section 5: Gallery -->
+             <div id="section-5" class="hidden w-full h-full flex flex-col space-y-2">
+                <h2>5. Collective Reflections</h2>
+                <div id="gallery-details" class="text-sm border border-black p-2 min-h-[50px]">Hover over a word from the gallery above to see its details.</div>
+            </div>
+
+            <!-- Section 6: Summary -->
+            <div id="section-6" class="hidden w-full h-full flex flex-col space-y-2">
+                <h2>6. Final Reflection & Download</h2>
+                <textarea id="final-thoughts" class="w-full p-2 border border-black" rows="2" placeholder="My final thoughts are..."></textarea>
+                <button id="download-summary-btn" class="nav-button bg-black text-white hover:bg-gray-800 w-full">Download A5 Summary</button>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div id="navigation-controls" class="mt-4 pt-2 border-t border-black">
+            <div class="flex space-x-2">
+                <button id="back-btn" class="nav-button bg-white text-black hover:bg-gray-200 hidden">Back</button>
+                <button id="next-btn" class="nav-button bg-black text-white hover:bg-gray-800">Next</button>
+                <button id="finish-btn" class="nav-button bg-black text-white hover:bg-gray-800 hidden w-full">Finish & View Gallery</button>
+                <button id="continue-btn" class="nav-button bg-black text-white hover:bg-gray-800 hidden w-full">Continue to Summary</button>
+                <button id="restart-btn" class="nav-button bg-black text-white hover:bg-gray-800 hidden w-full">Create Another</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SVG for the dynamic mask -->
+    <svg width="0" height="0" style="position:absolute;">
+        <defs>
+            <mask id="noise-mask" maskContentUnits="objectBoundingBox">
+                <rect width="1" height="1" fill="black" />
+                <g id="mask-rects"></g>
+            </mask>
+        </defs>
+    </svg>
+    
+    <script>
+    // --- DOM ELEMENT REFERENCES ---
+    const dom = {
+        topPanel: document.getElementById('top-panel'),
+        textContainer: document.getElementById('text-container'),
+        galleryPlotArea: document.getElementById('gallery-plot-area'),
+        textLayers: {
+            1: document.getElementById('text-layer-1'),
+            2: document.getElementById('text-layer-2'),
+            3: document.getElementById('text-layer-3'),
+        },
+        sections: [
+            document.getElementById('section-0'), document.getElementById('section-1'),
+            document.getElementById('section-2'), document.getElementById('section-3'),
+            document.getElementById('section-4'), document.getElementById('section-5'),
+            document.getElementById('section-6')
+        ],
+        workshopControls: document.getElementById('workshop-controls'),
+        galleryControls: document.getElementById('gallery-controls'),
+        galleryDetails: document.getElementById('gallery-details'),
+        navigation: {
+            back: document.getElementById('back-btn'),
+            next: document.getElementById('next-btn'),
+            finish: document.getElementById('finish-btn'),
+            continue: document.getElementById('continue-btn'),
+            restart: document.getElementById('restart-btn'),
+        },
+        controls: {
+            wordInput: document.getElementById('word-input'),
+            userWordDisplay: document.getElementById('user-word-display-2'),
+            fontFileInputs: {
+                1: document.getElementById('font-file-1'),
+                2: document.getElementById('font-file-2'), 3: document.getElementById('font-file-3')
+            },
+            fontFileNameDisplays: {
+                 1: document.getElementById('file-name-1'),
+                2: document.getElementById('file-name-2'), 3: document.getElementById('file-name-3')
+            },
+            weights: {
+                1: document.getElementById('weight-slider-1'), 2: document.getElementById('weight-slider-2'),
+                3: document.getElementById('weight-slider-3')
+            },
+            weightValues: {
+                1: document.getElementById('weight-value-1'), 2: document.getElementById('weight-value-2'),
+                3: document.getElementById('weight-value-3')
+            },
+            noise: {
+                optimism: document.getElementById('optimism-slider'),
+                imaginativeness: document.getElementById('imaginativeness-slider'),
+                cellSize: document.getElementById('cell-size-slider'),
+            },
+            noiseValues: {
+                optimism: document.getElementById('optimism-value'),
+                imaginativeness: document.getElementById('imaginativeness-value'),
+                cellSize: document.getElementById('cell-size-value'),
+            },
+            colors: {
+                bg: document.getElementById('bg-color-picker'),
+                1: document.getElementById('fill-color-1'), 2: document.getElementById('fill-color-2'),
+                3: document.getElementById('fill-color-3')
+            },
+            strokes: {
+                1: document.getElementById('stroke-color-1'), 2: document.getElementById('stroke-color-2'),
+                3: document.getElementById('stroke-color-3')
+            },
+            finalThoughts: document.getElementById('final-thoughts'),
+            downloadSummaryBtn: document.getElementById('download-summary-btn'),
+        },
+        maskRects: document.getElementById('mask-rects'),
+    };
+
+    // --- STATE MANAGEMENT ---
+    let state = {
+        currentStep: 0,
+        workshopResults: [],
+        permutation: [],
+        maskResolution: (33 - parseInt(dom.controls.noise.cellSize.value)) * 2,
+        fontURLs: {},
+        customFontFamilies: {},
+        placeholderIntervalIds: [],
+    };
+
+    // --- PERLIN NOISE ---
+    const Perlin = {
+        generatePermutation: () => {
+            state.permutation = [];
+            for (let i = 0; i < 256; i++) state.permutation[i] = i;
+            for (let i = 255; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [state.permutation[i], state.permutation[j]] = [state.permutation[j], state.permutation[i]];
+            }
+            state.permutation.push(...state.permutation);
+        },
+        fade: t => t * t * t * (t * (t * 6 - 15) + 10),
+        lerp: (t, a, b) => a + t * (b - a),
+        grad: (hash, x, y) => {
+            const h = hash & 15;
+            const u = h < 8 ? x : y, v = h < 4 ? y : (h === 12 || h === 14 ? x : 0);
+            return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+        },
+        noise: (x, y) => {
+            const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+            x -= Math.floor(x); y -= Math.floor(y);
+            const u = Perlin.fade(x), v = Perlin.fade(y);
+            const p = state.permutation;
+            const A = p[X] + Y, B = p[X + 1] + Y;
+            return Perlin.lerp(v, Perlin.lerp(u, Perlin.grad(p[A], x, y), Perlin.grad(p[B], x - 1, y)), Perlin.lerp(u, Perlin.grad(p[A + 1], x, y - 1), Perlin.grad(p[B + 1], x - 1, y - 1)));
+        }
+    };
+
+    // --- MASK & STYLE LOGIC ---
+    function setupNoiseMask() {
+        dom.maskRects.innerHTML = '';
+        const res = state.maskResolution;
+        for (let y = 0; y < res; y++) {
+            for (let x = 0; x < res; x++) {
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', x / res);
+                rect.setAttribute('y', y / res);
+                rect.setAttribute('width', 1 / res);
+                rect.setAttribute('height', 1 / res);
+                dom.maskRects.appendChild(rect);
+            }
+        }
+    }
+
+    // --- MAIN UPDATE FUNCTION ---
+    function update() {
+        if (state.placeholderIntervalIds.length > 0 && dom.controls.wordInput.value.trim() !== '') {
+            stopPlaceholderAnimation();
+        }
+
+        const settings = {
+            text: (dom.controls.wordInput.value || "who is AI to you?").toUpperCase(),
+            weights: {
+                1: dom.controls.weights[1].value,
+                2: dom.controls.weights[2].value,
+                3: dom.controls.weights[3].value
+            },
+            noise: {
+                optimism: parseFloat(dom.controls.noise.optimism.value),
+                imaginativeness: parseFloat(dom.controls.noise.imaginativeness.value),
+                cellSize: parseInt(dom.controls.noise.cellSize.value),
+            },
+            colors: {
+                bg: dom.controls.colors.bg.value,
+                1: dom.controls.colors[1].value,
+                2: dom.controls.colors[2].value,
+                3: dom.controls.colors[3].value
+            },
+            strokes: {
+                1: dom.controls.strokes[1].value,
+                2: dom.controls.strokes[2].value,
+                3: dom.controls.strokes[3].value
+            }
+        };
+
+        for(const key in dom.controls.weightValues) {
+            dom.controls.weightValues[key].textContent = parseFloat(settings.weights[key]).toFixed(2);
+        }
+        dom.controls.noiseValues.optimism.textContent = settings.noise.optimism.toFixed(2);
+        dom.controls.noiseValues.imaginativeness.textContent = settings.noise.imaginativeness;
+        dom.controls.noiseValues.cellSize.textContent = settings.noise.cellSize;
+
+        dom.topPanel.style.backgroundColor = settings.colors.bg;
+        const fontSize = (dom.topPanel.clientHeight / 3) * 1.25; // Increased font size
+        
+        for (const key in dom.textLayers) {
+            const layer = dom.textLayers[key];
+            const strokeWidth = fontSize * 0.01; 
+            const strokeColor = settings.strokes[key] || '#ffffff';
+            layer.style.textShadow = `${strokeWidth}px ${strokeWidth}px 0 ${strokeColor}, -${strokeWidth}px ${strokeWidth}px 0 ${strokeColor}, ${strokeWidth}px -${strokeWidth}px 0 ${strokeColor}, -${strokeWidth}px -${strokeWidth}px 0 ${strokeColor}`;
+
+            layer.textContent = settings.text;
+            layer.style.fontSize = `${fontSize}px`;
+            layer.style.color = settings.colors[key];
+            layer.style.fontFamily = state.customFontFamilies[key] || 'sans-serif';
+            
+            if (state.placeholderIntervalIds.length === 0) {
+                 layer.style.fontVariationSettings = `'wght' ${settings.weights[key]}`;
+            }
+        }
+        
+        const newResolution = (33 - settings.noise.cellSize) * 2;
+        if (newResolution !== state.maskResolution) {
+            state.maskResolution = newResolution;
+            setupNoiseMask();
+        }
+        const rects = dom.maskRects.children;
+        for (let y = 0; y < state.maskResolution; y++) {
+            for (let x = 0; x < state.maskResolution; x++) {
+                const index = y * state.maskResolution + x;
+                const value = Perlin.noise((x / state.maskResolution) * settings.noise.imaginativeness, (y / state.maskResolution) * settings.noise.imaginativeness) * 0.5 + 0.5;
+                const color = value > settings.noise.optimism ? 'white' : 'black';
+                if (rects[index]) rects[index].setAttribute('fill', color);
+            }
+        }
+    }
+    
+    async function getFullSettings() {
+        update();
+        const settings = {
+            text: (dom.controls.wordInput.value || "who is AI to you?").toUpperCase(),
+            weights: {
+                1: dom.controls.weights[1].value, 2: dom.controls.weights[2].value,
+                3: dom.controls.weights[3].value
+            },
+            noise: {
+                optimism: parseFloat(dom.controls.noise.optimism.value),
+                imaginativeness: parseFloat(dom.controls.noise.imaginativeness.value),
+                cellSize: parseInt(dom.controls.noise.cellSize.value),
+            },
+            colors: {
+                bg: dom.controls.colors.bg.value,
+                1: dom.controls.colors[1].value, 2: dom.controls.colors[2].value,
+                3: dom.controls.colors[3].value
+            },
+            strokes: {
+                1: dom.controls.strokes[1].value, 2: dom.controls.strokes[2].value,
+                3: dom.controls.strokes[3].value
+            },
+            seed: [...state.permutation],
+            fonts: {...state.customFontFamilies}
+        };
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const container = dom.textContainer;
+        canvas.width = container.offsetWidth;
+        canvas.height = container.offsetHeight;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const fontSize = (dom.topPanel.clientHeight / 3) * 1.25;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        for (let i = 1; i <= 3; i++) {
+            const key = i.toString();
+            ctx.font = `${fontSize}px "${state.customFontFamilies[key] || 'sans-serif'}"`;
+            ctx.fontVariationSettings = `'wght' ${settings.weights[key]}`;
+            
+            const strokeWidth = fontSize * 0.01;
+            ctx.strokeStyle = settings.strokes[key];
+            ctx.lineWidth = strokeWidth * 2;
+            ctx.strokeText(settings.text, canvas.width / 2, canvas.height / 2);
+            
+            ctx.fillStyle = settings.colors[key];
+            ctx.fillText(settings.text, canvas.width / 2, canvas.height / 2);
+        }
+        settings.png = canvas.toDataURL();
+
+        return settings;
+    }
+
+    function loadFont(file, layerKey) {
+        if (!file) return;
+        const fontFamilyName = `customFont-${layerKey}-${Date.now()}`;
+        if (state.fontURLs[layerKey]) URL.revokeObjectURL(state.fontURLs[layerKey]);
+        const fontUrl = URL.createObjectURL(file);
+        state.fontURLs[layerKey] = fontUrl;
+        
+        const style = document.createElement('style');
+        style.textContent = `@font-face { font-family: '${fontFamilyName}'; src: url('${fontUrl}'); }`;
+        document.head.appendChild(style);
+
+        state.customFontFamilies[layerKey] = fontFamilyName;
+        dom.controls.fontFileNameDisplays[layerKey].textContent = file.name;
+        update();
+    }
+
+    function navigateToStep(stepIndex) {
+        state.currentStep = stepIndex;
+        dom.sections.forEach((section, index) => section.classList.toggle('hidden', index !== stepIndex));
+        
+        dom.navigation.back.classList.toggle('hidden', stepIndex === 0);
+        dom.navigation.next.classList.toggle('hidden', stepIndex >= 4);
+        dom.navigation.finish.classList.toggle('hidden', stepIndex !== 4);
+        dom.navigation.continue.classList.toggle('hidden', stepIndex !== 5);
+        dom.navigation.restart.classList.toggle('hidden', stepIndex !== 6);
+
+        if (stepIndex === 2) dom.controls.userWordDisplay.textContent = (dom.controls.wordInput.value || "").toUpperCase();
+        
+        if (stepIndex >= 5) {
+            showGallery();
+        } else {
+            hideGallery();
+        }
+
+        if (stepIndex === 1 && dom.controls.wordInput.value.trim() === '') {
+            startPlaceholderAnimation();
+        } else {
+            stopPlaceholderAnimation();
+        }
+    }
+
+    dom.navigation.next.addEventListener('click', () => {
+        if (state.currentStep === 1 && dom.controls.wordInput.value.trim() === '') {
+            alert("Please enter a word to continue.");
+            return;
+        }
+        if (state.currentStep < dom.sections.length - 1) navigateToStep(state.currentStep + 1);
+    });
+    dom.navigation.back.addEventListener('click', () => {
+        if (state.currentStep > 0) navigateToStep(state.currentStep - 1);
+    });
+    dom.navigation.finish.addEventListener('click', async () => {
+        const finalSettings = await getFullSettings();
+        state.workshopResults.push(finalSettings);
+        navigateToStep(5);
+    });
+     dom.navigation.continue.addEventListener('click', () => navigateToStep(6));
+    dom.navigation.restart.addEventListener('click', () => {
+        resetControls();
+        navigateToStep(1); // Go back to word input, not font setup
+    });
+    
+    dom.controls.downloadSummaryBtn.addEventListener('click', () => {
+        const summaryContainer = document.createElement('div');
+        summaryContainer.id = 'summary-container';
+        
+        const lastResult = state.workshopResults[state.workshopResults.length - 1];
+        if (!lastResult) return;
+
+        summaryContainer.innerHTML = `
+            <div style="background-color: ${lastResult.colors.bg}; padding: 20px; text-align: center;">
+                <img src="${lastResult.png}" style="max-width: 80%; margin: 0 auto; display: block;">
+            </div>
+            <div style="padding: 20px; font-size: 12px;">
+                <h2 style="font-size: 16px; border-bottom: 1px solid black; padding-bottom: 5px; margin-bottom: 10px;">AI REFLECTION: ${lastResult.text}</h2>
+                <p><strong>Final Thoughts:</strong><br>${dom.controls.finalThoughts.value || 'None'}</p>
+                <h3 style="font-size: 14px; border-bottom: 1px solid black; padding-bottom: 5px; margin: 15px 0 10px;">DATA</h3>
+                <p><strong>Gains/Losses (Crit, Crea, Learn):</strong> ${parseFloat(lastResult.weights[1]).toFixed(2)}, ${parseFloat(lastResult.weights[2]).toFixed(2)}, ${parseFloat(lastResult.weights[3]).toFixed(2)}</p>
+                <p><strong>Perspectives (Optimism, Imaginativeness, Abstraction):</strong> ${lastResult.noise.optimism}, ${lastResult.noise.imaginativeness}, ${33 - lastResult.noise.cellSize}</p>
+                 <h3 style="font-size: 14px; border-bottom: 1px solid black; padding-bottom: 5px; margin: 15px 0 10px;">COLORS</h3>
+                <p><strong>Background:</strong> ${lastResult.colors.bg}</p>
+                <p><strong>Criticality (Fill/Stroke):</strong> ${lastResult.colors[1]} / ${lastResult.strokes[1]}</p>
+                <p><strong>Creativity (Fill/Stroke):</strong> ${lastResult.colors[2]} / ${lastResult.strokes[2]}</p>
+                <p><strong>Learning (Fill/Stroke):</strong> ${lastResult.colors[3]} / ${lastResult.strokes[3]}</p>
+            </div>
+        `;
+        document.body.appendChild(summaryContainer);
+
+        html2canvas(summaryContainer).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `AI-Reflection-${lastResult.text}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            document.body.removeChild(summaryContainer);
+        });
+    });
+
+    function showGallery() {
+        dom.textContainer.classList.add('hidden');
+        dom.galleryPlotArea.classList.remove('hidden');
+        renderGallery();
+    }
+
+    function hideGallery() {
+        dom.textContainer.classList.remove('hidden');
+        dom.galleryPlotArea.classList.add('hidden');
+        update();
+    }
+
+    function renderGallery() {
+        const plotArea = dom.galleryPlotArea;
+        plotArea.querySelectorAll('.gallery-point').forEach(p => p.remove());
+
+        state.workshopResults.forEach((result, index) => {
+            const point = document.createElement('div');
+            point.className = 'gallery-point';
+            point.style.left = `${result.noise.imaginativeness / 50 * 100}%`;
+            point.style.bottom = `${result.noise.optimism * 100}%`;
+            
+            const img = document.createElement('img');
+            img.src = result.png;
+            point.appendChild(img);
+            
+            point.addEventListener('mouseenter', () => {
+                dom.galleryDetails.innerHTML = `
+                    <strong>Word:</strong> ${result.text} <br>
+                    <strong>Gains/Losses (C,C,L):</strong> ${parseFloat(result.weights[1]).toFixed(2)}, ${parseFloat(result.weights[2]).toFixed(2)}, ${parseFloat(result.weights[3]).toFixed(2)} <br>
+                    <strong>Optimism:</strong> ${result.noise.optimism} | 
+                    <strong>Imaginativeness:</strong> ${result.noise.imaginativeness}
+                `;
+            });
+             point.addEventListener('mouseleave', () => {
+                dom.galleryDetails.textContent = 'Hover over a word from the gallery above to see its details.';
+            });
+            plotArea.appendChild(point);
+        });
+    }
+
+    function resetControls() {
+        dom.controls.wordInput.value = '';
+        dom.controls.weights[1].value = 2.5;
+        dom.controls.weights[2].value = 2.5;
+        dom.controls.weights[3].value = 2.5;
+        dom.controls.noise.optimism.value = 0;
+        dom.controls.noise.imaginativeness.value = 1;
+        dom.controls.noise.cellSize.value = 1;
+        dom.controls.colors.bg.value = '#000000';
+        dom.controls.colors[1].value = '#000000';
+        dom.controls.colors[2].value = '#000000';
+        dom.controls.colors[3].value = '#000000';
+        dom.controls.strokes[1].value = '#ffffff';
+        dom.controls.strokes[2].value = '#ffffff';
+        dom.controls.strokes[3].value = '#ffffff';
+        dom.controls.finalThoughts.value = '';
+    }
+
+    function animatePlaceholder() {
+        if (state.placeholderIntervalIds.length === 0) return;
+        for(const key in dom.textLayers) {
+            const randomWeight = Math.random() * 5;
+            dom.textLayers[key].style.fontVariationSettings = `'wght' ${randomWeight}`;
+        }
+    }
+
+    function startPlaceholderAnimation() {
+        if (state.placeholderIntervalIds.length > 0) return; // Already running
+        
+        const animateLayer = (layerKey, interval) => {
+            const id = setInterval(() => {
+                const randomWeight = Math.random() * 5;
+                dom.textLayers[layerKey].style.fontVariationSettings = `'wght' ${randomWeight}`;
+            }, interval);
+            state.placeholderIntervalIds.push(id);
+        };
+        
+        animateLayer('1', 1000);
+        animateLayer('2', 800);
+        animateLayer('3', 1200);
+    }
+
+    function stopPlaceholderAnimation() {
+        state.placeholderIntervalIds.forEach(id => clearInterval(id));
+        state.placeholderIntervalIds = [];
+        update();
+    }
+
+    window.addEventListener('load', () => {
+        Perlin.generatePermutation();
+        setupNoiseMask();
+        navigateToStep(0);
+        update();
+
+        Object.values(dom.controls.fontFileInputs).forEach((input, i) => {
+            const key = Object.keys(dom.controls.fontFileInputs)[i];
+            input.addEventListener('change', (e) => loadFont(e.target.files[0], key));
+        });
+        
+        document.querySelectorAll('input[type="range"], input[type="color"], input[type="text"]')
+            .forEach(control => control.addEventListener('input', update));
+        
+        window.addEventListener('resize', update);
+    });
+    </script>
+</body>
+</html>
